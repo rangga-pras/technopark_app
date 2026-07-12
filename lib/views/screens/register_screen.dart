@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../utils/app_google_fonts.dart';
-import '../widgets/custom_input_field.dart';
-import '../widgets/primary_button.dart';
-import '../widgets/workspace_illustration.dart';
+import '../../constants/app_colors.dart';
+import '../../controllers/auth_controller.dart';
+import '../../utils/app_google_fonts.dart';
+import '../../widgets/custom_input_field.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/workspace_illustration.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -30,25 +31,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
-    final formIsValid = _formKey.currentState?.validate() ?? false;
-    if (!formIsValid) {
+  Future<void> _register() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
-    final isRegistered = AuthService.instance.register(
+    final authController = context.read<AuthController>();
+    final isSuccess = await authController.register(
       name: _nameController.text,
       email: _emailController.text,
       password: _passwordController.text,
     );
 
-    if (!isRegistered) {
-      _showMessage('Email sudah terdaftar. Silakan gunakan email lain.');
+    if (!mounted) {
+      return;
+    }
+    if (!isSuccess) {
+      _showMessage(authController.errorMessage ?? 'Registrasi gagal.');
       return;
     }
 
     _showMessage('Registrasi berhasil. Silakan login.');
-    Navigator.pop(context);
+    Navigator.of(context).pop();
   }
 
   void _showMessage(String message) {
@@ -59,6 +63,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthController>().isLoading;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -89,7 +95,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         color: AppColors.textSecondary,
                         fontSize: 14,
                         height: 1.35,
-                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     const SizedBox(height: 18),
@@ -129,23 +134,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: _validateConfirmPassword,
                     ),
                     const SizedBox(height: 22),
-                    PrimaryButton(label: 'Daftar', onPressed: _register),
+                    PrimaryButton(
+                      label: 'Daftar',
+                      onPressed: isLoading ? null : _register,
+                      isLoading: isLoading,
+                    ),
                     const SizedBox(height: 18),
                     Center(
                       child: Wrap(
                         alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             'Sudah punya akun? ',
                             style: GoogleFonts.inter(
                               color: AppColors.textSecondary,
                               fontSize: 13,
-                              fontWeight: FontWeight.w400,
                             ),
                           ),
                           GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () => Navigator.of(context).pop(),
                             child: Text(
                               'Login',
                               style: GoogleFonts.inter(
@@ -169,55 +176,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String? _validateName(String? value) {
-    final name = value?.trim() ?? '';
-
-    if (name.isEmpty) {
-      return 'Nama lengkap wajib diisi.';
-    }
-
-    return null;
+    return (value?.trim().isEmpty ?? true) ? 'Nama lengkap wajib diisi.' : null;
   }
 
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
-    final emailPattern = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-
     if (email.isEmpty) {
       return 'Email wajib diisi.';
     }
-
-    if (!emailPattern.hasMatch(email)) {
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email)) {
       return 'Format email belum valid.';
     }
-
     return null;
   }
 
   String? _validatePassword(String? value) {
-    final password = value ?? '';
-
-    if (password.isEmpty) {
+    if ((value ?? '').isEmpty) {
       return 'Password wajib diisi.';
     }
-
-    if (password.length < 6) {
+    if (value!.length < 6) {
       return 'Password minimal 6 karakter.';
     }
-
     return null;
   }
 
   String? _validateConfirmPassword(String? value) {
-    final confirmPassword = value ?? '';
-
-    if (confirmPassword.isEmpty) {
+    if ((value ?? '').isEmpty) {
       return 'Konfirmasi password wajib diisi.';
     }
-
-    if (confirmPassword != _passwordController.text) {
+    if (value != _passwordController.text) {
       return 'Konfirmasi password belum sama.';
     }
-
     return null;
   }
 }

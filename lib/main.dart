@@ -1,48 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:provider/provider.dart';
 
-import 'constants/app_colors.dart';
-import 'screens/login_screen.dart';
-import 'utils/app_google_fonts.dart';
+import 'config/app_routes.dart';
+import 'config/app_theme.dart';
+import 'controllers/auth_controller.dart';
+import 'controllers/booking_controller.dart';
+import 'controllers/room_controller.dart';
+import 'services/api_service.dart';
+import 'services/notification_service.dart';
+import 'services/secure_storage_service.dart';
 
-void main() {
-  runApp(const TechnoParkApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID');
+
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
+  runApp(TechnoParkApp(notificationService: notificationService));
 }
 
 class TechnoParkApp extends StatelessWidget {
-  const TechnoParkApp({super.key});
+  const TechnoParkApp({super.key, required this.notificationService});
+
+  final NotificationService notificationService;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = GoogleFonts.interTextTheme(Theme.of(context).textTheme);
+    final apiService = ApiService();
 
-    return MaterialApp(
-      title: 'TechnoPark',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          surface: AppColors.card,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthController(SecureStorageService()),
         ),
-        textTheme: textTheme.apply(
-          bodyColor: AppColors.textPrimary,
-          displayColor: AppColors.textPrimary,
+        ChangeNotifierProvider(create: (_) => RoomController(apiService)),
+        ChangeNotifierProvider(
+          create: (_) => BookingController(apiService, notificationService),
         ),
-        snackBarTheme: SnackBarThemeData(
-          backgroundColor: AppColors.textPrimary,
-          contentTextStyle: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
+      ],
+      child: MaterialApp(
+        title: 'TechnoPark',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        initialRoute: AppRoutes.splash,
+        onGenerateRoute: AppRoutes.onGenerateRoute,
       ),
-      home: const LoginScreen(),
     );
   }
 }

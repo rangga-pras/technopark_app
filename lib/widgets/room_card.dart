@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
-import '../models/room_model.dart';
+import '../models/room.dart';
 import '../utils/app_google_fonts.dart';
 import 'room_thumbnail.dart';
 
 class RoomCard extends StatelessWidget {
   const RoomCard({super.key, required this.room, required this.onTap});
 
-  final RoomModel room;
+  final Room room;
   final VoidCallback onTap;
 
   @override
@@ -30,7 +30,10 @@ class RoomCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             child: Row(
               children: [
-                RoomThumbnail(capacity: room.capacity),
+                RoomThumbnail(
+                  capacity: room.capacity,
+                  visualVariant: room.visualVariant,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -66,15 +69,23 @@ class RoomCard extends StatelessWidget {
                   height: 44,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: AppColors.successSoft,
+                    color: room.isAvailable
+                        ? AppColors.successSoft
+                        : const Color(0xFFFFFBEB),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.successBorder),
+                    border: Border.all(
+                      color: room.isAvailable
+                          ? AppColors.successBorder
+                          : const Color(0xFFFDE68A),
+                    ),
                   ),
                   child: Center(
                     child: Text(
-                      'Tersedia',
+                      room.isAvailable ? 'Tersedia' : 'Penuh',
                       style: GoogleFonts.inter(
-                        color: AppColors.successDark,
+                        color: room.isAvailable
+                            ? AppColors.successDark
+                            : const Color(0xFFD97706),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),

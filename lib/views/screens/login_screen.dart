@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../constants/app_colors.dart';
-import '../services/auth_service.dart';
-import '../utils/app_google_fonts.dart';
-import '../widgets/custom_input_field.dart';
-import '../widgets/primary_button.dart';
-import '../widgets/workspace_illustration.dart';
-import 'home_screen.dart';
-import 'register_screen.dart';
+import '../../config/app_routes.dart';
+import '../../constants/app_colors.dart';
+import '../../controllers/auth_controller.dart';
+import '../../utils/app_google_fonts.dart';
+import '../../widgets/app_logo.dart';
+import '../../widgets/custom_input_field.dart';
+import '../../widgets/primary_button.dart';
+import '../../widgets/workspace_illustration.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -28,26 +29,27 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     final formIsValid = _formKey.currentState?.validate() ?? false;
     if (!formIsValid) {
       return;
     }
 
-    final user = AuthService.instance.login(
+    final authController = context.read<AuthController>();
+    final isSuccess = await authController.login(
       email: _emailController.text,
       password: _passwordController.text,
     );
 
-    if (user == null) {
-      _showMessage('Email atau password salah. Coba akun demo atau daftar.');
+    if (!mounted) {
+      return;
+    }
+    if (isSuccess) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.home);
       return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+    _showMessage(authController.errorMessage ?? 'Login gagal.');
   }
 
   void _showMessage(String message) {
@@ -58,6 +60,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthController>().isLoading;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -72,10 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const WorkspaceIllustration(),
                     const SizedBox(height: 14),
-                    const _BrandHeader(
-                      title: 'TechnoPark',
-                      subtitle: 'Free workspace booking',
-                    ),
+                    const _BrandHeader(),
                     const SizedBox(height: 14),
                     Text(
                       'Masuk untuk booking workspace',
@@ -93,7 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.textSecondary,
                         fontSize: 14,
                         height: 1.35,
-                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -119,9 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: () {
-                          _showMessage('Fitur lupa password belum tersedia.');
-                        },
+                        onTap: () => _showMessage(
+                          'Fitur lupa password belum tersedia pada versi UAS ini.',
+                        ),
                         child: Text(
                           'Lupa password?',
                           style: GoogleFonts.inter(
@@ -133,30 +133,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    PrimaryButton(label: 'Login', onPressed: _login),
+                    PrimaryButton(
+                      label: 'Login',
+                      onPressed: isLoading ? null : _login,
+                      isLoading: isLoading,
+                    ),
                     const SizedBox(height: 18),
                     Center(
                       child: Wrap(
                         alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             'Belum punya akun? ',
                             style: GoogleFonts.inter(
                               color: AppColors.textSecondary,
                               fontSize: 13,
-                              fontWeight: FontWeight.w400,
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RegisterScreen(),
-                                ),
-                              );
-                            },
+                            onTap: () => Navigator.of(
+                              context,
+                            ).pushNamed(AppRoutes.register),
                             child: Text(
                               'Daftar',
                               style: GoogleFonts.inter(
@@ -183,35 +180,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _validateEmail(String? value) {
     final email = value?.trim() ?? '';
-    final emailPattern = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-
     if (email.isEmpty) {
       return 'Email wajib diisi.';
     }
-
-    if (!emailPattern.hasMatch(email)) {
+    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(email)) {
       return 'Format email belum valid.';
     }
-
     return null;
   }
 
   String? _validatePassword(String? value) {
-    final password = value ?? '';
-
-    if (password.isEmpty) {
+    if ((value ?? '').isEmpty) {
       return 'Password wajib diisi.';
     }
-
     return null;
   }
 }
 
 class _BrandHeader extends StatelessWidget {
-  const _BrandHeader({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
+  const _BrandHeader();
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +206,7 @@ class _BrandHeader extends StatelessWidget {
       height: 48,
       child: Row(
         children: [
-          const _LogoMark(),
+          const AppLogo(),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -227,9 +214,7 @@ class _BrandHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'TechnoPark',
                   style: GoogleFonts.inter(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -238,45 +223,16 @@ class _BrandHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'Free workspace booking',
                   style: GoogleFonts.inter(
                     color: AppColors.textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _LogoMark extends StatelessWidget {
-  const _LogoMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 46,
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Center(
-        child: Text(
-          'T',
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
       ),
     );
   }
@@ -314,7 +270,6 @@ class _OperationalInfoCard extends StatelessWidget {
               color: AppColors.textSecondary,
               fontSize: 12,
               height: 1.4,
-              fontWeight: FontWeight.w400,
             ),
           ),
         ],

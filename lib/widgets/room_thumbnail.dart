@@ -3,13 +3,18 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 class RoomThumbnail extends StatelessWidget {
-  const RoomThumbnail({super.key, required this.capacity});
+  const RoomThumbnail({
+    super.key,
+    required this.capacity,
+    this.visualVariant = 0,
+  });
 
   final int capacity;
+  final int visualVariant;
 
   @override
   Widget build(BuildContext context) {
-    final isLargeRoom = capacity == 8;
+    final isLargeRoom = visualVariant == 2 || capacity >= 8;
     final backgroundColor = isLargeRoom
         ? AppColors.cyanSoft
         : AppColors.blueSoft;
